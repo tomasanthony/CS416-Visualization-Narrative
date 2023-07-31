@@ -10,7 +10,7 @@
     }
 
     .covid-node {
-        cursor: pointer; /* Add cursor pointer to indicate interactivity */
+        cursor: pointer;
     }
 
     #tooltip {
@@ -83,7 +83,7 @@
     const csvYearMap = {2020: csv2020, 2021: csv2021, 2022:csv2022}
     let initialMonth = 0;
     let chosenYear = "2020"
-    let previousSliderValue = 0; // Variable to store the previous slider value
+    let previousSliderValue = 0;
     d3.select('body')
         .append('div')
         .attr('id', 'covid-tooltip')
@@ -149,15 +149,14 @@
             }).on("mouseout", function (event, d) {
             d3.select('#tooltip').transition().duration(100).style("opacity", 0);
         }).attr('fill', 'red')
-            .attr('r', (d) => (d.deaths === 0 ? 0 : d.deaths / 100 + 1)) // Reduced the radius for better visibility
+            .attr('r', (d) => (d.deaths === 0 ? 0 : d.deaths / 100 + 1))
             .transition()
             .duration(5000)
-            .attr("transform", d => `translate(${projection([d.Longitude, d.Latitude])})`) // Project circle positions using the projection
+            .attr("transform", d => `translate(${projection([d.Longitude, d.Latitude])})`) 
             .attr('r', (d) => 1 + (cumulativeDeathCount[d.County] !== 0 ? cumulativeDeathCount[d.County] / 100 : 0))
     }
 
 
-    // Call the function to load and process the data
     function visualizeData(data) {
         const svg = d3.select("svg");
         projection = d3.geoAlbersUsa().scale(1300).translate([487.5, 305])
@@ -178,16 +177,14 @@
         });
 
         addCovid(covid, data, initialMonth);
-        // Create a zoom behavior and attach it to the SVG container
         const zoom = d3.zoom()
-            .scaleExtent([1, 8]) // Define the minimum and maximum zoom levels
+            .scaleExtent([1, 8])
             .on('zoom', zoomed);
 
         svg.call(zoom);
 
         // Zoom event handler
         function zoomed(event) {
-            // Get the current transform state
             const {transform} = event;
             map.attr('transform', transform);
 
@@ -208,18 +205,14 @@
             10: "November",
             11: "December"
         };
-        stop(); // Stop the play if the user manually changes the slider value
+        stop();
 
-        // Get the current slider value
         const slider = event.target;
         const currentValue = parseInt(slider.value);
 
-        // Check if the user is trying to move backward
         if (currentValue < previousSliderValue) {
-            // Reset the slider value to the last valid value (no backward movement allowed)
             slider.value = previousSliderValue;
         } else {
-            // Update the previous slider value
             previousSliderValue = parseInt(slider.value);
             addCovid(covid, dataMap[chosenYear], parseInt(slider.value));
             document.getElementById("year-header").textContent = `${monthsMapping[slider.value]}, ${chosenYear}`;
@@ -229,7 +222,6 @@
     async function loadData(csvFile) {
         try {
             dataMap[chosenYear] = await d3.csv(csvFile);
-            // Call the visualizeData function to process and visualize the data
             visualizeData(dataMap[chosenYear]);
         } catch (error) {
             console.error('Error loading the CSV file:', error);
