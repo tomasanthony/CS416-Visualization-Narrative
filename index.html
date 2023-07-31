@@ -40,6 +40,17 @@
         border-radius: 5px;
     }
 
+    #annotation {
+        background-color: lightskyblue;
+        opacity: 1;
+        padding: 10px;
+        width: 400px;
+        height: 60px;
+        border-style: solid;
+        border-width: 1px;
+        border-radius: 5px;
+    }
+
     #monthSlider{
         width:1000px;
     }
@@ -47,6 +58,7 @@
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson@3.0.2/dist/topojson.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
+
 <body>
 <h1 class="main-header">Covid by County</h1>
 <h2 id="year-header"></h2>
@@ -60,6 +72,7 @@
 </div>
 <svg width="960" height="600">
     <div id="tooltip"></div>
+    <div id="annotation"></div>
 </svg>
 <h4 class="main-header"> Data Citations:</h4>
 <ul>
@@ -84,11 +97,6 @@
     let initialMonth = 0;
     let chosenYear = "2020"
     let previousSliderValue = 0;
-    d3.select('body')
-        .append('div')
-        .attr('id', 'covid-tooltip')
-        .attr('style', 'position: absolute;').attr('style',
-        ' opacity: 0;');
     const svg = d3.select("svg");
     const map = svg.append("g");
     const features = map.append("g");
@@ -98,6 +106,10 @@
     let cumulativeCaseCount = {}
     let monthlyDeathCount = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {}, 8: {}, 9: {}, 10: {}, 11: {}}
     let monthlyCaseCount = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {}, 8: {}, 9: {}, 10: {}, 11: {}}
+    const yearAnnotationMap = {"2020": 'In 2020, The first Covid-19 cases appeared in the United States in January.' + "<br/>" + 'In December, Covid-19 vaccines become available',
+        "2021": 'In 2021, The Covid-19 death toll in the United States reaches 400,000 in January.' + "<br/>" + 'In December, The Omnicron variant is detected and the CDC recommends vaccine boosters',
+        "2022": 'In 2022, Covid-19 cause an increase of cases in January, with New York experiencing the most infections since the pandemic began.' + "<br/>" + 'In June, The total deaths reach more than one million',
+    }
 
     function parseDate(date) {
         const parsedDate = date.split("-");
@@ -152,7 +164,7 @@
             .attr('r', (d) => (d.deaths === 0 ? 0 : d.deaths / 100 + 1))
             .transition()
             .duration(5000)
-            .attr("transform", d => `translate(${projection([d.Longitude, d.Latitude])})`) 
+            .attr("transform", d => `translate(${projection([d.Longitude, d.Latitude])})`)
             .attr('r', (d) => 1 + (cumulativeDeathCount[d.County] !== 0 ? cumulativeDeathCount[d.County] / 100 : 0))
     }
 
@@ -231,6 +243,7 @@
         covid.selectAll('*').remove();
         document.getElementById("monthSlider").value = 0;
         document.getElementById("year-header").textContent = `January, ${year}`;
+        d3.select('#annotation').html(yearAnnotationMap[year]);
         chosenYear=year;
         cumulativeDeathCount = {};
         cumulativeCaseCount = {}
@@ -258,6 +271,8 @@
     }
     async function init() {
         document.getElementById("year-header").textContent = `January, 2020`;
+        d3.select('#annotation').html(yearAnnotationMap['2020']);
+
         await loadData(csv2020);
     }
 
