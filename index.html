@@ -237,6 +237,7 @@
     }
     async function changeYear(year){
         covid.selectAll('*').remove();
+        document.getElementById("monthSlider").value = 0;
         chosenYear=year;
         cumulativeDeathCount = {};
         cumulativeCaseCount = {}
