@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<style>
+    .counties :hover {
+        fill: lightgray;
+    }
+
+    .counties {
+        fill: grey;
+    }
+
+    .covid-node {
+        cursor: pointer; /* Add cursor pointer to indicate interactivity */
+    }
+
+    #tooltip {
+        font-size: 8px;
+        fill: red;
+        pointer-events: none;
+        position: absolute;
+    }
+
+    .county-borders {
+        fill: none;
+        stroke: #fff;
+        stroke-width: 0.5px;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        pointer-events: none;
+    }
+
+    #tooltip {
+        background-color: lightskyblue;
+        opacity: 0;
+        padding: 10px;
+        width: 185px;
+        height: 125px;
+        border-style: solid;
+        border-width: 1px;
+        border-radius: 5px;
+    }
+
+    #monthSlider{
+        width:1000px;
+    }
+</style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/topojson@3.0.2/dist/topojson.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3-annotation/2.5.1/d3-annotation.min.js"></script>
+<body>
+<h1 class="main-header">Covid by County</h1>
+<h2 id="year-header"></h2>
+<a href="#" onclick="goBack()">&larr;</a>
+<a href="#" onclick="selectYear(`2020`)">2020</a> |
+<a href="#" onclick="selectYear(`2021`)">2021</a> |
+<a href="#" onclick="selectYear(`2022`)">2022</a>
+<a href="#" onclick="goForward()">&rarr;</a>
+<div class="main-buttons">
+    <input type="range" min="0" max="11" step="1" value="0" id="monthSlider" oninput="changeMonth(event)">
+</div>
+<svg width="960" height="600">
+    <div id="tooltip"></div>
+</svg>
+<h4 class="main-header"> Data Citations:</h4>
+<ul>
+    <li>
+        The New York Times. (2021). Coronavirus (Covid-19) Data in the United States
+    </li>
+    <li>
+        Annual Estimates of the Resident Population for Counties in the United States: April 1," 2020 to July 1, 2022
+        (CO-EST2022-POP)
+        US Census Bureau, Population Division, March 2023
+    </li>
+    <li>
+        U.S. Census Bureau's Gazetteer of County Populations and Areas, 2022
+    </li>
+</ul>
+<script>
+    let dataMap={};
+    const csv2020= "./files/2020-covid-data-coords.csv"
+    const csv2021= "./files/2021-covid-data-coords.csv"
+    const csv2022= "./files/2022-covid-data-coords.csv"
+    const csvYearMap = {2020: csv2020, 2021: csv2021, 2022:csv2022}
+    let initialMonth = 0;
+    let chosenYear = "2020"
+    let previousSliderValue = 0; // Variable to store the previous slider value
+    d3.select('body')
+        .append('div')
+        .attr('id', 'covid-tooltip')
+        .attr('style', 'position: absolute;').attr('style',
+        ' opacity: 0;');
+    const svg = d3.select("svg");
+    const map = svg.append("g");
+    const features = map.append("g");
+    const borders = map.append("path");
+    const covid = map.append("g");
+    let cumulativeDeathCount = {};
+    let cumulativeCaseCount = {}
+    let monthlyDeathCount = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {}, 8: {}, 9: {}, 10: {}, 11: {}}
+    let monthlyCaseCount = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {}, 8: {}, 9: {}, 10: {}, 11: {}}
+
+    function parseDate(date) {
+        const parsedDate = date.split("-");
+        return new Date(parsedDate[0], parseInt(parsedDate[1] - 1).toString(), parsedDate[2])
+    }
+
+    function filterMonth(data, month) {
+        const filteredData = data.filter((d) => {
+            return parseInt(month) === parseDate(d.date).getMonth();
+        })
+        filteredData.forEach((d) => {
+            if (cumulativeDeathCount[d.County]) {
+                cumulativeDeathCount[d.County] += parseInt(d.deaths);
+            } else {
+                cumulativeDeathCount[d.County] = parseInt(d.deaths);
+            }
+            if (cumulativeCaseCount[d.County]) {
+                cumulativeCaseCount[d.County] += parseInt(d.cases);
+            } else {
+                cumulativeCaseCount[d.County] = parseInt(d.cases);
+            }
+            if (monthlyDeathCount[parseInt(month)][d.County]) {
+                monthlyDeathCount[parseInt(month)][d.County] += parseInt(d.deaths);
+            } else {
+                monthlyDeathCount[parseInt(month)][d.County] = parseInt(d.deaths);
+            }
+            if (monthlyCaseCount[parseInt(month)][d.County]) {
+                monthlyCaseCount[parseInt(month)][d.County] += parseInt(d.cases);
+            } else {
+                monthlyCaseCount[parseInt(month)][d.County] = parseInt(d.cases);
+            }
+        });
+        return filteredData;
+    }
+
+    function addCovid(svg, data, chosenMonth) {
+        // Draw the circles on top of the map
+        svg.selectAll('circle')
+            .data(filterMonth(data, chosenMonth))
+            .enter()
+            .append('circle')
+            .on("mouseover", function (event, d) {
+                d3.select('#tooltip').transition().duration(100)
+                    .style('opacity', 1);
+                d3.select('#tooltip')
+                    .style("left", event.pageX + "px")
+                    .style("top", event.pageY + "px")
+                    .html(`${d.County}, ${d.State}` + "<br/>" + `New Monthly Cases: ${monthlyCaseCount[parseInt(chosenMonth)][d.County]}` + "</br>" + `New Monthly Deaths: ${monthlyDeathCount[parseInt(chosenMonth)][d.County]}` + "<br/>" + `Year to Date Cases: ${cumulativeCaseCount[d.County]}` + "<br/>" + `Year to Date Deaths: ${cumulativeDeathCount[d.County]}`);
+            }).on("mouseout", function (event, d) {
+            d3.select('#tooltip').transition().duration(100).style("opacity", 0);
+        }).attr('fill', 'red')
+            .attr('r', (d) => (d.deaths === 0 ? 0 : d.deaths / 100 + 1)) // Reduced the radius for better visibility
+            .transition()
+            .duration(5000)
+            .attr("transform", d => `translate(${projection([d.Longitude, d.Latitude])})`) // Project circle positions using the projection
+            .attr('r', (d) => 1 + (cumulativeDeathCount[d.County] !== 0 ? cumulativeDeathCount[d.County] / 100 : 0))
+    }
+
+
+    // Call the function to load and process the data
+    function visualizeData(data) {
+        const svg = d3.select("svg");
+        projection = d3.geoAlbersUsa().scale(1300).translate([487.5, 305])
+        path = d3.geoPath()
+
+        // Draw the map
+        d3.json("https://d3js.org/us-10m.v1.json").then(function (us) {
+            features.attr("class", "counties")
+                .selectAll("path")
+                .data(topojson.feature(us, us.objects.counties).features)
+                .join("path")
+                .attr("d", path);
+
+            borders.attr("class", "county-borders")
+                .attr("d", path(topojson.mesh(us, us.objects.counties, function (a, b) {
+                    return a !== b;
+                })));
+        });
+
+        addCovid(covid, data, initialMonth);
+        // Create a zoom behavior and attach it to the SVG container
+        const zoom = d3.zoom()
+            .scaleExtent([1, 8]) // Define the minimum and maximum zoom levels
+            .on('zoom', zoomed);
+
+        svg.call(zoom);
+
+        // Zoom event handler
+        function zoomed(event) {
+            // Get the current transform state
+            const {transform} = event;
+            map.attr('transform', transform);
+
+        }
+    }
+    function changeMonth(event) {
+        const monthsMapping = {
+            0: "January",
+            1: "February",
+            2: "March",
+            3: "April",
+            4: "May",
+            5: "June",
+            6: "July",
+            7: "August",
+            8: "September",
+            9: "October",
+            10: "November",
+            11: "December"
+        };
+        stop(); // Stop the play if the user manually changes the slider value
+
+        // Get the current slider value
+        const slider = event.target;
+        const currentValue = parseInt(slider.value);
+
+        // Check if the user is trying to move backward
+        if (currentValue < previousSliderValue) {
+            // Reset the slider value to the last valid value (no backward movement allowed)
+            slider.value = previousSliderValue;
+        } else {
+            // Update the previous slider value
+            previousSliderValue = parseInt(slider.value);
+            addCovid(covid, dataMap[chosenYear], parseInt(slider.value));
+            document.getElementById("year-header").textContent = `${monthsMapping[slider.value]}, ${chosenYear}`;
+        }
+    }
+
+    async function loadData(csvFile) {
+        try {
+            dataMap[chosenYear] = await d3.csv(csvFile);
+            // Call the visualizeData function to process and visualize the data
+            visualizeData(dataMap[chosenYear]);
+        } catch (error) {
+            console.error('Error loading the CSV file:', error);
+        }
+    }
+    async function changeYear(year){
+        covid.selectAll('*').remove();
+        chosenYear=year;
+        cumulativeDeathCount = {};
+        cumulativeCaseCount = {}
+        monthlyDeathCount = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {}, 8: {}, 9: {}, 10: {}, 11: {}}
+        monthlyCaseCount = {0: {}, 1: {}, 2: {}, 3: {}, 4: {}, 5: {}, 6: {}, 7: {}, 8: {}, 9: {}, 10: {}, 11: {}}
+        await loadData(csvYearMap[year])
+    }
+
+    function selectYear(year){
+        changeYear(year);
+    }
+    async function init() {
+        document.getElementById("year-header").textContent = `January, 2020`;
+        await loadData(csv2020);
+    }
+
+
+    init();
+</script>
+</body>
+</html>
