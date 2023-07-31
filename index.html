@@ -238,6 +238,7 @@
     async function changeYear(year){
         covid.selectAll('*').remove();
         document.getElementById("monthSlider").value = 0;
+        document.getElementById("year-header").textContent = `January, ${year}`;
         chosenYear=year;
         cumulativeDeathCount = {};
         cumulativeCaseCount = {}
@@ -248,6 +249,20 @@
 
     function selectYear(year){
         changeYear(year);
+    }
+    function goBack(){
+        if(chosenYear !== "2020"){
+           const back = parseInt(chosenYear)-1
+            chosenYear = back.toString()
+            changeYear(chosenYear)
+        }
+    }
+    function goForward(){
+        if(chosenYear !== "2022"){
+            const forward = parseInt(chosenYear)+1
+            chosenYear = forward.toString()
+            changeYear(chosenYear)
+        }
     }
     async function init() {
         document.getElementById("year-header").textContent = `January, 2020`;
